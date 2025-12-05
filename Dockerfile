@@ -10,14 +10,17 @@ WORKDIR /app/frontend
 # Copy frontend package files
 COPY frontend/package*.json ./
 
-# Install frontend dependencies
-RUN npm install --only=production
+# Install all frontend dependencies (including TypeScript for build)
+RUN npm install
 
 # Copy frontend source code
 COPY frontend/ ./
 
 # Build React app for production
 RUN npm run build
+
+# Remove dev dependencies to keep production image lean
+RUN npm prune --production
 
 # Stage 2: Production Runtime
 FROM python:3.9-slim AS runtime
