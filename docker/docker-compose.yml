@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # Backend Service
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: penguinblur-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - FILE_EXPIRY_TIME=900000
+      - FILE_CLEANUP_INTERVAL=300000
+      - FRONTEND_URL=http://localhost:3000
+    volumes:
+      - ./../logs:/app/logs
+      - /tmp:/tmp
+    networks:
+      - penguinblur-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: penguinblur-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:3001
+      - VITE_WS_URL=ws://localhost:3001
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - penguinblur-network
+    restart: unless-stopped
+
+  # Redis for session storage (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: penguinblur-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - penguinblur-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # Nginx reverse proxy (production)
+  nginx:
+    image: nginx:alpine
+    container_name: penguinblur-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - penguinblur-network
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  penguinblur-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
