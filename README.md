@@ -329,4 +329,8 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 
 ---
 
+## 🌐 Live Deployment
+
+**Live URL**: https://penguin-faceblur-732035295736.me-west1.run.app/
+
 Made with ❤️ and 🐧 for privacy advocates everywhere
